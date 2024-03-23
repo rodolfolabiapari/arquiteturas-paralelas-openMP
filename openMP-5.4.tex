@@ -1,0 +1,184 @@
+\section{Cláusula de Redução}
+
+\frame{
+    \Huge \color{blue} \bf  \centering Reduction
+}
+
+\begin{frame}[fragile]{Reduction - Introdução}
+	\begin{lstlisting}
+void Trap(double a, double b, int n, double* global_result_p);
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item Esta, provavelmente, não seria a chamada de função que utilizaríamos.
+
+				\pause
+
+		\item Utilizaríamos algo como:
+	\end{itemize}
+
+	\begin{lstlisting}
+double Trap(double a, double b, int n);
+	\end{lstlisting}
+
+			\pause
+
+	\begin{itemize}
+		\item Assim, teríamos a função:
+	\end{itemize}
+
+	\begin{lstlisting}
+global_result = 0.0;
+# pragma omp parallel num_threads(thread_count) 
+{
+    #   pragma omp critical
+    global_result += Trap(double a, double b, int n); 
+}
+	\end{lstlisting}
+
+			\pause
+
+	\begin{itemize}
+		\item Mas há algo errado nesta função. O quê?
+	\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Reduction - Introdução}
+	\begin{lstlisting}
+global_result = 0.0;
+# pragma omp parallel num_threads(thread_count)
+{
+	double my_result = 0.0;
+	my_result += Trap(double a, double b, int n); 
+	#	pragma omp critical
+	global_result += my_result;
+}
+	\end{lstlisting}
+
+	\begin{enumerate}
+		\item A {\bf chamada} está {\bf fora da seção crítica}.
+		\item As threads poderão ser chamadas/executadas simultaneamente.
+	\end{enumerate}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Reduction - Conceitos}
+	\begin{itemize}
+		\item OpenMP provê outras alternativas para esse tipo de situação.
+		\item É denominado {\bf \textit{redução} da variável}.
+		\begin{itemize}
+			\item {\bf Reduction Operator:} Qualquer tipo de operador bináio em C/C++ (\verb!+, *, -, &, | , ^, &&, ||!);
+			\item {\bf Reduction:} Computação que aplica repetidadamente o mesmo operador para uma sequência de operandos para pegar um simples resultado;
+			\item {\bf Reduction Variable:} Variável de armazemamento (\verb&global_result&).
+		\end{itemize}
+	\end{itemize}
+
+	\begin{lstlisting}
+int sum = 0;
+for (i = 0; i < n; i++)
+	sum += A[i];
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item Em OpenMP, é possível realizar uma \textbf{redução} de uma específica variável ({\bf variável redutiva}) que utiliza um operador binário (\textbf{operador redutível}) por meio de diretivas.
+	\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Reduction - Aplicação}
+	\begin{lstlisting}
+global_result = 0.0;
+# pragma omp parallel num_threads(thread_count)
+{
+	double my_result = 0.0;
+	my_result += Trap(double a, double b, int n); 
+	#	pragma omp critical
+	global_result += my_result;
+}
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item Poderia ser reescrito como:
+	\end{itemize}
+
+	\begin{lstlisting}
+global_result = 0;
+# pragma omp parallel num_threads(thread_count) \
+		reduction(+: global_result)
+global_result += Trap(double a, double b, int n);
+	\end{lstlisting}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Reduction - Aplicação}
+	\begin{lstlisting}
+global_result = 0;
+# pragma omp parallel num_threads(thread_count) \
+		reduction(+: global_result)
+global_result += Trap(double a, double b, int n);
+	\end{lstlisting}
+
+			\bigskip
+
+	\begin{enumerate}
+		\item Cria-se uma variável privada para cada thread de uma team;
+		\item Os dados de cada thread são gravados nestas;
+		\item Também cria-se uma seção crítica para adição dessas com o valor final.
+	\end{enumerate}
+
+			\pause
+
+	\begin{itemize}
+		\item A Redução de uma variável \verb%float% ou \verb%double% pode resultar em valores ligeiramente diferentes.
+		\begin{itemize}
+			\item $a + (b + c)$ pode não ter o mesmo valor que usar $(a + b) + c$.
+		\end{itemize}
+		\item Quando uma variável é reduzida, automaticamente é compartilhada.
+	\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Reduction - Aplicação}
+
+	\begin{lstlisting}
+global_result = 0;
+# pragma omp parallel num_threads(thread_count) \
+		reduction(+: global_result)
+global_result += Trap(double a, double b, int n);
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item possui a mesma função que:
+	\end{itemize}
+
+	\begin{lstlisting}
+global_result = 0.0;
+# pragma omp parallel num_threads(thread_count)
+{
+	double my_result = 0.0;
+	my_result += Trap(double a, double b, int n); 
+	#	pragma omp critical
+	global_result += my_result;
+}
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item As variáveis privadas são inicializadas de acordo com o operando
+				\pause
+		\begin{itemize}
+			\item Operando redutor \verb&+& inicializa as variáveis com o valor 0;
+			\item Operando redutor \verb&*& inicializa as variáveis com o valor 1.
+		\end{itemize}
+	\end{itemize}
+\end{frame}

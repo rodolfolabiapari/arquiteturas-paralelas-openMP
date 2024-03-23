@@ -1,0 +1,472 @@
+\subsection{Diretiva {\tt parallel for}}
+
+\begin{frame}[fragile]{Diretiva {\tt parallel for}}
+	\begin{itemize}
+		\item Também existe uma diretiva que torna possível paralelizar {\bf estruturas de repetição}.
+				\pause
+		\item Temos o seguinte bloco a ser executado:
+	\end{itemize}
+
+%	\begin{lstlisting}
+%h = (b - a) / n;
+%approx = (f(a) + f(b)) / 2.0;
+%for (i = 1; i <= n - 1; i++)
+%	approx += f(a + i * h); 
+%approx = h * approx;
+%	\end{lstlisting}
+
+
+\begin{lstlisting}
+somatorio = 0;
+for (i = 0; i < n; i++)
+	somatorio += calcula(a + i * h); 
+somatorio = h * somatorio;
+\end{lstlisting}
+
+		\pause
+
+	\begin{itemize}
+		\item Com a diretiva para paralelização de \textit{loop}:
+	\end{itemize}
+
+%	\begin{lstlisting}
+%h = (b - a) / n;
+%approx = (f(a) + f(b)) / 2.0;
+%# pragma omp parallel for num_Threads(thread_count) \
+%	reduction(+: approx) 
+%for (i = 1; i <= n - 1; i++)
+%	approx += f(a + i * h);
+%approx = h * approx;
+%	\end{lstlisting}
+
+\begin{lstlisting}
+somatorio = 0;
+# pragma omp parallel for num_Threads(thread_count) \
+	reduction(+: somatorio) 
+for (i = 0; i < n; i++)
+	somatorio += calcula(a + i * h); 
+somatorio = h * somatorio;
+\end{lstlisting}
+
+\end{frame}
+
+
+
+
+\begin{frame}{Diretiva {\tt parallel for}}
+	\begin{itemize}
+	    \setlength\itemsep{1em}
+		\item Como o {\tt parallel}, o {\tt parallel for} realiza um {\it fork} de um {\bf time} de \textit{Threads} para executar o bloco seguinte.
+		\item {\bf Obrigatoriamente}, deve-se utilizar o comando {\tt for} para tal.
+		\item O que ocorre internamente é que:
+		\begin{itemize}
+	        \setlength\itemsep{0.7em}
+			\item {\bf O sistema} paraleliza o loop {\bf dividindo em iterações de loop};
+			\item Os blocos são {\bf divididos} por \textit{Threads}:
+			\begin{itemize}
+				\item $i / thread\_count$;
+				\item {\bf \textit{Thread} 0} fica com o {\bf bloco 0};
+				\item {\bf \textit{Thread} 1} fica com o {\bf bloco 1}...
+			\end{itemize}
+
+		\end{itemize}
+
+	\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Diretiva {\tt parallel for}}
+	\begin{itemize}
+	    \setlength\itemsep{1em}
+		\item Diferencia-se dos {\tt parallel} pois:
+		\begin{itemize}
+	        \setlength\itemsep{0.6em}
+			\item Este necessita ser {\bf dividido entre os \textit{Threads} pelo próprios \textit{Threads}} o que não ocore com o {\tt parallel for};
+			\begin{itemize}
+				\item No {\tt parallel} as \textit{Threads} distribuiem o trabalho entre si;
+				\item No {\tt parallel for} o sistema realiza a distribuição delas.
+			\end{itemize}
+			\item Todas as variáveis do {\tt parallel} são compartilhadas. Já no {\tt parallel for} são todas {\bf particulares}\footnote{\bf Inclusive o {\tt i}.}.
+		\end{itemize}
+
+		\item Realizar a {\bf \textit{redução} da variável somadora} protegendo-a com a {\bf seção crítica}
+		\begin{itemize}
+			\item Se a variável {\tt i} fosse compartilhada, deveria proteger usando seção crítica ao realizar o {\tt i++}.
+		\end{itemize}
+
+	\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Diretiva {\tt parallel for} - Ressalvas}
+	\begin{itemize}
+		%\item O uso do {\tt parallel for} possui várias ressalvas.
+		\item {\bf Não é possível paralelizar} {\tt while} ou {\tt do-while}
+
+			\pause
+
+		\begin{itemize}
+			\item Isto não significa uma limitação;
+			\item Qualquer código pode ser convertido em código equivalente que utiliza um loop {\tt for}.
+		\end{itemize}
+
+			\bigskip
+			\pause
+
+		\item Compilador que suporta OpenMP, paraleliza loops que tenham {\bf limite de iterações}. São eles:
+		\begin{itemize}
+			\item Definição pelo \verb% for (. . .; . . .; . . .) % ; e
+			\item Antes da execução do loop.
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+	\begin{itemize}
+		\item Só paraleliza loops na {\bf forma canônica}:
+	\end{itemize}
+$
+\mathtt{for} \left(
+		\begin{array}{c}
+			\mathtt{index = start}
+		\end{array}
+		;
+		\begin{array}{c}
+			\mathtt{index > end} \\
+			\mathtt{index >= end} \\
+			\mathtt{index <= end} \\
+			\mathtt{index < end} \\
+		\end{array}
+		;
+		\begin{array}{c}
+			\mathtt{index++} \\
+			\mathtt{index--} \\
+			\mathtt{--index} \\
+			\mathtt{++index} \\
+			\mathtt{index += incr} \\
+			\mathtt{index -= incr} \\
+			\mathtt{index = index + incr} \\
+			\mathtt{index = incr + index} \\
+			\mathtt{index = index - incr} 
+		\end{array}
+	\right)
+$
+			\\[1.2cm]
+			\pause
+
+	\begin{itemize}
+		\item Exemplos de códigos que {\bf \textit{não} podem ser paralelizados}:
+	\end{itemize}
+
+	\begin{multicols}{2}
+		Loop Infinito
+		\begin{lstlisting}
+for ( ; ; ) {
+
+}
+		\end{lstlisting}
+
+	\columnbreak
+		Loop com interrupção
+		\begin{lstlisting}
+for (i = 0; i < n; i++) {
+	if ( . . . ) break;
+}
+		\end{lstlisting}	
+
+	\end{multicols}
+\end{frame}
+
+
+\begin{frame}[fragile]{Diretiva {\tt parallel for}  - Dependência de Dados}
+	\begin{itemize}
+		\item Mas quando o loop falha sobre uma das regras citadas?
+
+			\pause
+
+	\begin{lstlisting}
+for (i = 0; i < n; i++)
+	if (A[i] == key) return i;
+return -1;
+	\end{lstlisting}
+
+			\pause
+
+		\item O compilador \verb&gcc& rejeitará o comando de paralelismo retornando erro:
+
+	\end{itemize}
+
+		\bigskip	
+
+	\verb&Line 2: error: invalid exit from OpenMP structured block&
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Diretiva {\tt parallel for}  - Dependência de Dados}
+	\begin{lstlisting}
+fibo[0] = fibo[1] = 1;
+# pragma omp parallel for num_Threads(thread_count)
+for (i = 2; i < n; i++)
+	fibo[i] = fibo[i-1] + fibo[i-2];
+	\end{lstlisting}
+
+		\pause
+
+	\begin{itemize}
+		\item Será criado um executável sem qualquer alerta.
+
+			\pause
+%	\end{itemize}
+%\end{frame}
+%
+%
+%\begin{frame}[fragile]{Diretiva {\tt parallel for}  - Dependência de Dados}
+%	\begin{itemize}
+		\item Exemplo utilizando 2 \textit{Threads} para 10 números:
+		\begin{enumerate}
+			\item \textit{1 1 2 3 5 8 13 21 34 55};
+			\begin{itemize}
+				\pause
+				\item Uma \textit{Thread} ficou com o 2 ao 5 e outra com 6 ao 9;
+				\item E a segunda só começou depois que a primeira terminou.
+			\end{itemize}
+
+				\pause
+
+			\item \textit{1 1 2 3 5 8 0 0 0 0}.
+			\begin{itemize}
+				\pause
+				\item Uma \textit{Thread} ficou com o 2 ao 5 e outra com 6 ao 9;
+				\pause
+				\item A segunda terminou primeiro a execução;
+				\item {\tt fibo[4] = 0} e  {\tt fibo[5] = 0}.
+			\end{itemize}
+		\end{enumerate}
+
+            \pause
+            \bigskip
+
+		\item Entretanto, os resultados {\bf serão imprevisíveis}.
+	\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Diretiva {\tt parallel for}  - Dependência de Dados}
+	\begin{itemize}
+	    \setlength\itemsep{1.1em}
+		\item Isso pois o compilador que suporta OpenMP:
+		\begin{itemize}
+	    \setlength\itemsep{0.8em}
+			\item Não verifica dependências durante as interações no loop;
+			\item Loops que necessitam de {\bf valor de iterações passadas}, geralmente, {\bf não podem ser paralelizados} pelo compiladores.
+		\end{itemize}
+		\item A dependência do {\tt fibo[6]} com o {\tt fibo[5]} é chamada de {\bf Dependência de dados}.
+		\item Desde que o valor de {\tt fibo[5]} for calculado em uma interação e o resultado usado em outra {\bf subsequente}, então a dependência as vezes é chamado de {\bf \textit{Loop-Carried Dependence}}.
+	\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]{Diretiva {\tt parallel for} - Encontrando \textit{Loop-Carried Dependence}}
+	\begin{itemize}
+		\item Ao utilizar o {\tt parallel for}, deve-se ficar atento somente aos \textit{Loop-Carried Dependence}.
+	\end{itemize}
+
+		\bigskip
+
+	\begin{lstlisting}
+for (i = 0; i < n; i++) {
+	x[i] = a + i*h;
+	y[i] = exp(x[i]);
+}
+	\end{lstlisting}
+
+		\pause
+
+	\begin{itemize}
+		\item Esse código possui dependência de dados entre as linhas mas {\bf não é um problema para a paralelização}.
+	\end{itemize}
+
+%	\begin{itemize}
+%		\item Deve-se preocupar {\it somente} com variáveis que são {\bf lidas ou gravadas em uma iteração} e {\bf escrita em outra}.
+%	\end{itemize}
+\end{frame}
+
+
+
+
+
+\section{Exemplo}
+\frame{
+    \Huge \color{blue} \bf  \centering Estimando $\pi$ Com Paralelismo
+}
+
+\begin{frame}[fragile]{Exemplo da estimação de $\pi$}
+	\begin{itemize}
+		\item Como seria feito uma estimação com codificação paralela utilizando a fórmula: 
+		$$\pi = 4\Bigg[ 1 - \frac{1}{3} + \frac{1}{5} - \frac{1}{7} + \dots \Bigg] = 4 \sum\limits_{k=0}^\infty \frac{(-1)^k}{2k+1}.$$
+	\end{itemize}
+
+		\pause
+
+	\begin{lstlisting}
+double factor = 1.0, sum = 0.0;
+# pragma omp parallel for num_Threads(thread_count) \
+	reduction(+:sum)
+for (k = 0; k < n; k++) {
+	sum += factor/(2*k+1);
+	factor = -factor;
+}
+pi_approx = 4.0 * sum;
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item {\bf Relembrando:} Deve-se preocupar somente com variáveis que são lidas ou gravadas em uma iteração e escrita em outra.
+	\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]{Exemplo da estimação de $\pi$}
+	\begin{lstlisting}
+double factor = 1.0, sum = 0.0;
+# pragma omp parallel for num_Threads(thread_count) \
+	reduction(+:sum)
+for (k = 0; k < n; k++) {
+	sum += factor/(2*k+1);
+	factor = -factor;
+}
+pi_approx = 4.0 * sum;
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item É notável que existe uma dependência na variável {\tt factor}.
+				\pause
+		\begin{itemize}
+		    \item Atualizar o valor na linha 6 na iteração $k$ e incrementar o {\tt sum} na linha 5 interação $k+1$ é um \textit{Loop-Carried Dependence}.
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]{Exemplo da estimação de $\pi$}
+	\begin{itemize}
+		\item Trocaremos:
+	\end{itemize}
+	\begin{lstlisting}
+sum += factor/(2*k+1);
+factor = -factor;
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item por
+	\end{itemize}
+	\begin{lstlisting}
+if (k % 2 == 0)
+	factor = 1.0;
+else 
+	factor = -1.0
+sum += factor/(2*k+1);
+	\end{lstlisting}
+\end{frame}
+
+
+
+
+
+\begin{frame}[fragile]{Exemplo da estimação de $\pi$}
+	\begin{lstlisting}
+if (k % 2 == 0)
+	factor = 1.0;
+else 
+	factor = -1.0
+sum += factor/(2*k+1);
+	\end{lstlisting}
+
+	\begin{itemize}
+		\item Elimina-se a dependência de loop.
+
+			\pause
+
+		\item Mas se executar-mos o programa, ainda {\bf continuará} a exibir resultado errôneos:
+		\begin{itemize}
+			\item Qualquer variável declarada antes do loop, é {\bf compartilhada} entre as \textit{Threads};
+			\item E com isso, {\tt fator} é compartilhado. 
+			\begin{itemize}
+				\item Uma \textit{Thread} pode definir o valor de 1 e outra logo em seguida redefine para -1 sem que tenha utilizado.
+			\end{itemize}
+			\item Deve garantir que cada segmento tem sua própria cópia do fator;
+			\item Adiciona-se uma cláusula {\tt private} à diretiva.
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]{Exemplo da estimação de $\pi$}
+
+	\begin{lstlisting}
+double factor = 1.0, sum = 0.0;
+# pragma omp parallel for num_Threads(thread_count) \
+	reduction(+:sum) private(factor)
+for (k = 0; k < n; k++) {
+	if (k % 2 == 0)
+		factor = 1.0;
+	else 
+		factor = -1.0
+	sum += factor/(2*k+1);
+}
+pi_approx = 4.0 * sum;
+	\end{lstlisting}
+\end{frame}
+
+
+
+
+
+
+
+\begin{frame}[fragile]{Outras Diretivas para Escopo}
+	\begin{itemize}
+		\item Ao invés de deixar o compilador dicidir qual o âmbito de cada variável, é uma boa prática decidirmos nós mesmo (programadores).
+		\item OpenMP oferece uma cláusula chamada {\tt default} pra que isso seja definido.
+		\item Ao utilizar essa diretiva, o compilador exigirá que definemos o escopo de cada variável que usamos no bloco.
+			\bigskip
+		\item Variáveis que são usadas por todas as \textit{Threads} e que não são modificadas, podem, seguramente, ser definidas como compartilhadas.
+	\end{itemize}
+
+\end{frame}
+
+
+
+
+
+\begin{frame}[fragile]{Outras Diretivas para Escopo}
+	\begin{lstlisting}
+double factor = 1.0, sum = 0.0;
+# pragma omp parallel for num_Threads(thread_count) \
+	default(none) reduction(+:sum) private(k, factor) \
+	shared(n)
+
+for (k = 0; k < n; k++) {
+	if (k % 2 == 0)
+		factor = 1.0;
+	else 
+		factor = -1.0
+	sum += factor/(2*k+1);
+}
+pi_approx = 4.0 * sum;
+	\end{lstlisting}
+\end{frame}
+
+
+
